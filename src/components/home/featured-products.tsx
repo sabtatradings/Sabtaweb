@@ -161,6 +161,14 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
       ref={sectionRef}
       aria-label="Featured products"
       className="relative w-full bg-background"
+      // Lenis (see providers.tsx) smooths scroll with a 0.1 lerp, so a fast
+      // flick's momentum takes ~0.5-0.7s to "catch up" to its target. That
+      // lag is invisible on normal content, but inside this pinned deck the
+      // scroll position IS the only visual feedback, so the catch-up reads
+      // as the page going dead/stuck mid-scroll. data-lenis-prevent tells
+      // Lenis to let scroll input over this section through natively
+      // (unsmoothed) instead, matching finger/wheel movement 1:1.
+      data-lenis-prevent
       style={{
         height: `calc(100dvh + ${(cardCount - 1) * (isMobile ? 22 : 45)}vh)`,
       }}
