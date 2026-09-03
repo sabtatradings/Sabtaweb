@@ -2,7 +2,6 @@
 
 import { useRef, useState, useEffect } from "react"
 import { useScroll, useTransform, useMotionValueEvent } from "framer-motion"
-import { useLenis } from "lenis/react"
 import type { Product } from "@/lib/products"
 import { StackRevealCard } from "@/components/home/stack-reveal-card"
 import { useMediaQuery } from "@/components/home/three-d-photo-carousel"
@@ -46,115 +45,9 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
 
   const advance = useTransform(scrollYProgress, [0, 1], [0, cardCount - 1])
 
-  // activeCardIndex (state) is for the progress dots' render; this ref mirrors
-  // it so the touch handlers below always read the latest value without
-  // needing to be torn down and re-attached on every scroll tick.
-  const activeCardIndexRef = useRef(0)
-
   useMotionValueEvent(advance, "change", (v) => {
-    const clamped = Math.min(cardCount - 1, Math.max(0, Math.round(v)))
-    activeCardIndexRef.current = clamped
-    setActiveCardIndex(clamped)
+    setActiveCardIndex(Math.min(cardCount - 1, Math.max(0, Math.round(v))))
   })
-
-  // On mobile this deck is driven by page-scroll position (see `advance`
-  // above), and a single flick's scroll distance is never a fixed amount —
-  // it depends on swipe speed/momentum — so a fast swipe used to blow past
-  // several cards at once (and a slow one barely moved the deck at all),
-  // which read as laggy/unpredictable. This takes over the touch gesture
-  // while the deck is pinned: a swipe past a small threshold advances
-  // exactly one card, animated smoothly to that card's exact scroll
-  // position via Lenis, instead of tracking the raw drag distance. Swiping
-  // further than the first/last card releases the gesture back to normal
-  // page scrolling so the section still scrolls in and out naturally.
-  // (StackRevealCard itself is untouched — it just keeps reading `advance`,
-  // which this only ever moves by animating real scroll position.)
-  const lenis = useLenis()
-
-  useEffect(() => {
-    if (!isMobile || cardCount <= 1) return
-    const section = sectionRef.current
-    if (!section) return
-
-    const ENGAGE_PX = 10
-    const TRIGGER_PX = 28
-
-    let startY = 0
-    let captured = false
-    let decided = false
-    let direction: 1 | -1 = 1
-
-    function isPinned() {
-      const rect = section!.getBoundingClientRect()
-      return rect.top <= 1 && rect.bottom > window.innerHeight
-    }
-
-    function scrollToCard(targetIndex: number) {
-      const sectionEl = section!
-      const scrollRange = sectionEl.offsetHeight - window.innerHeight
-      if (scrollRange <= 0) return
-      const targetY = sectionEl.offsetTop + (targetIndex / (cardCount - 1)) * scrollRange
-      if (lenis) {
-        lenis.scrollTo(targetY, { duration: 0.5, easing: (t: number) => 1 - Math.pow(1 - t, 3) })
-      } else {
-        window.scrollTo({ top: targetY, behavior: "smooth" })
-      }
-    }
-
-    function handleTouchStart(e: TouchEvent) {
-      startY = e.touches[0].clientY
-      captured = isPinned()
-      decided = false
-    }
-
-    function handleTouchMove(e: TouchEvent) {
-      if (!captured) return
-      const deltaY = startY - e.touches[0].clientY
-
-      if (!decided) {
-        if (Math.abs(deltaY) < ENGAGE_PX) return
-        direction = deltaY > 0 ? 1 : -1
-
-        // Only the forward direction is stepped one card per swipe. That
-        // throttle exists so a fast swipe doesn't blow past several product
-        // cards too quickly to read — but there's nothing to read on the
-        // way back out, so applying the same one-at-a-time throttle to the
-        // reverse direction just turns leaving the section (scrolling back
-        // up past it) into a slog of repeated swipes. Releasing capture
-        // here hands the gesture back to normal scrolling, so a single
-        // swipe back up can carry through several cards at once.
-        if (direction === -1) {
-          captured = false
-          return
-        }
-
-        if (activeCardIndexRef.current >= cardCount - 1) {
-          captured = false
-          return
-        }
-        decided = true
-      }
-
-      e.preventDefault()
-    }
-
-    function handleTouchEnd(e: TouchEvent) {
-      if (!captured || !decided) return
-      const deltaY = startY - e.changedTouches[0].clientY
-      if (Math.abs(deltaY) < TRIGGER_PX) return
-      const targetIndex = Math.min(cardCount - 1, Math.max(0, activeCardIndexRef.current + direction))
-      if (targetIndex !== activeCardIndexRef.current) scrollToCard(targetIndex)
-    }
-
-    section.addEventListener("touchstart", handleTouchStart, { passive: true })
-    section.addEventListener("touchmove", handleTouchMove, { passive: false })
-    section.addEventListener("touchend", handleTouchEnd, { passive: true })
-    return () => {
-      section.removeEventListener("touchstart", handleTouchStart)
-      section.removeEventListener("touchmove", handleTouchMove)
-      section.removeEventListener("touchend", handleTouchEnd)
-    }
-  }, [isMobile, cardCount, lenis])
 
   return (
     <section
