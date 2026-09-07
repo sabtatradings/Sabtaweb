@@ -104,6 +104,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       contactType: "sales",
       areaServed: "AE",
     },
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: contactInfo.address,
+      addressLocality: contactInfo.addressLocality,
+      addressCountry: contactInfo.addressCountry,
+    },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: contactInfo.lat,
+      longitude: contactInfo.lng,
+    },
   }
 
   return (

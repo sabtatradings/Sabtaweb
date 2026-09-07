@@ -107,11 +107,14 @@ export default async function ContactPage({
                       href={contactInfo.mapsPlaceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-accent"
+                      className="inline-flex items-start gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-accent"
                     >
-                      {contactInfo.poBox}
-                      <ExternalLink className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
+                      <span>
+                        {contactInfo.address}, {contactInfo.city}
+                      </span>
+                      <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden="true" />
                     </a>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{contactInfo.poBox}</p>
                   </div>
                 </li>
               </ul>
@@ -162,6 +165,9 @@ export default async function ContactPage({
               referrerPolicy="no-referrer-when-downgrade"
               className="block h-[250px] w-full border-0 sm:h-[350px] md:h-[450px]"
             />
+            <p className="border-t border-border px-6 py-3 text-xs text-muted-foreground">
+              {siteConfig.name}, {contactInfo.address}, {contactInfo.city}
+            </p>
           </div>
         </ScrollReveal>
       </div>
