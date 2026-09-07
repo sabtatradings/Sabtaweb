@@ -226,7 +226,7 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
                 <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
               </Link>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
               {related.map((item) => (
                 <ProductCard key={item.id} item={item} color={category.color} icon={category.icon} />
               ))}
