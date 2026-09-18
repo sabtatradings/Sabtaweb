@@ -1,6 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
     // Default Next.js only serves images at quality 75. Product photos need to
     // look sharp when zoomed on the detail page, so allow higher-quality tiers.
