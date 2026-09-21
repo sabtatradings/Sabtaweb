@@ -5,6 +5,7 @@ import { getAdminUser } from "@/lib/auth"
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Incorrect email or password. Please try again.",
   denied: "This account doesn't have admin access.",
+  open: "Sign-in is blocked because sign-ups are open in Supabase. In Supabase go to Authentication \u2192 Sign In / Providers, turn off \u201cAllow new users to sign up\u201d, then try again.",
   limited: "Too many attempts. Please wait a few minutes and try again.",
   unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
 }

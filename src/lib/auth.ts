@@ -1,13 +1,15 @@
-// Admin auth, powered by Supabase Authentication (email + password).
+// Admin auth, powered entirely by Supabase Authentication (email + password).
 //
-// Create your admin user in the Supabase dashboard (Authentication → Users →
-// Add user), then either
-//   - list that email in the ADMIN_EMAIL env var (comma-separated for several), or
-//   - give the user `app_metadata.role = "admin"` (see README / SQL below).
+// Setup, all inside Supabase — no environment variables:
+//   1. Authentication > Users > Add user  (tick "Auto Confirm User")
+//   2. Authentication > Sign In / Providers > turn OFF "Allow new users to sign up"
+// Every account that exists is then one you created, so each can sign in.
 //
+// (If you'd rather keep sign-ups open, give the admin user the admin role
+// instead and only that user gets in:
 //   update auth.users
 //     set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'
-//     where email = 'you@example.com';
+//     where email = 'you@example.com';)
 //
 // Sessions are the Supabase access + refresh tokens stored in httpOnly cookies
 // (see admin-session.ts). Nothing is tied to an IP, device or server, so you can
@@ -24,11 +26,12 @@ import {
   cookieOptions,
   isAllowedAdmin,
   isSecureRequest,
+  signupsDisabled,
   supabaseAuthConfig,
 } from "./admin-session"
 
 export type AdminUser = { id: string; email: string }
-export type SignInResult = "ok" | "invalid" | "denied" | "limited" | "unavailable"
+export type SignInResult = "ok" | "invalid" | "denied" | "open" | "limited" | "unavailable"
 
 function statelessClient() {
   const cfg = supabaseAuthConfig()
@@ -85,10 +88,12 @@ export async function signInAdmin(email: string, password: string): Promise<Sign
     return "invalid"
   }
 
-  if (!isAllowedAdmin(data.user)) {
-    // Valid Supabase account, but not an admin: don't keep the session around.
+  if (!(await isAllowedAdmin(data.user, { fresh: true }))) {
+    // Not allowed in: don't keep the session around.
     await client.auth.signOut({ scope: "local" }).catch(() => {})
-    return "denied"
+    // "open" = sign-ups are enabled in Supabase, so the account can't be
+    // trusted as an admin (the settings were just re-read, so this is current).
+    return (await signupsDisabled()) ? "denied" : "open"
   }
 
   await setSessionCookies(data.session)
@@ -128,7 +133,7 @@ export const getAdminUser = cache(async (): Promise<AdminUser | null> => {
   try {
     const { data, error } = await client.auth.getUser(token)
     if (error || !data.user) return null
-    if (!isAllowedAdmin(data.user)) return null
+    if (!(await isAllowedAdmin(data.user))) return null
     return { id: data.user.id, email: data.user.email || "" }
   } catch {
     return null
