@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"
 
 export default function NewBlogPostPage() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 md:px-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 md:px-8">
       <Link
         href="/admin/blog"
         className="group mb-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-accent"
