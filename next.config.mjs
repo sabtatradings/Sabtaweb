@@ -20,6 +20,9 @@ const nextConfig = {
     minimumCacheTTL: 86400,
   },
   experimental: {
+    // The proxy (src/proxy.ts) buffers request bodies; the default cap is
+    // 10MB, which would silently truncate larger product-photo uploads.
+    proxyClientMaxBodySize: "20mb",
     serverActions: {
       // Admin product-photo uploads (actions.ts) need room for real camera/
       // supplier photos (often 5-15MB) before sharp downsizes them.

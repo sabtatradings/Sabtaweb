@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import {
   AlignLeft,
   ArrowDown,
@@ -136,7 +135,6 @@ const BLOCK_META = {
 } as const
 
 export function BlogForm({ post }: { post?: BlogPost }) {
-  const router = useRouter()
   const uid = useId()
   const id = (name: string) => `${uid}-${name}`
   const isEditing = !!post
@@ -268,8 +266,9 @@ export function BlogForm({ post }: { post?: BlogPost }) {
           await createPostAction(input)
         }
         dirtyRef.current = false
-        router.push("/admin/blog")
-        router.refresh()
+        // Full page load (not router.push): reliable behind Hostinger's proxy.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign("/admin/blog")
       } catch (err: unknown) {
         setError(err instanceof Error && err.message ? err.message : "Failed to save post.")
         window.scrollTo({ top: 0, behavior: "smooth" })

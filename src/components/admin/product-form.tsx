@@ -10,13 +10,15 @@ export function ProductForm({
   categories,
   product,
   initialCategorySlug,
-  action,
+  error,
 }: {
   categories: CategoryMeta[]
   product?: Product
   initialCategorySlug?: string
-  action: (formData: FormData) => void
+  /** Message from a failed save (the save endpoint redirects back with ?error=). */
+  error?: string
 }) {
+  const [saving, setSaving] = useState(false)
   const defaultCategory = product?.categorySlug ?? initialCategorySlug ?? categories[0]?.slug ?? ""
   const [selectedCategory, setSelectedCategory] = useState(defaultCategory)
   const [preview, setPreview] = useState<string | null>(product?.image ?? null)
@@ -24,7 +26,19 @@ export function ProductForm({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form
+      method="post"
+      action="/admin/save/product"
+      encType="multipart/form-data"
+      onSubmit={() => setSaving(true)}
+      className="flex flex-col gap-5"
+    >
+      {product && <input type="hidden" name="id" value={product.id} />}
+      {error && (
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {error}
+        </p>
+      )}
       <div>
         <label htmlFor="categorySlug" className="text-xs font-bold uppercase tracking-wider text-foreground">
           Category
@@ -168,8 +182,8 @@ export function ProductForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 pt-2">
-        <button type="submit" className="h-12 flex-1 rounded-lg btn-primary text-sm font-bold">
-          {product ? "Save Changes" : "Add Product"}
+        <button type="submit" disabled={saving} className="h-12 flex-1 rounded-lg btn-primary text-sm font-bold disabled:opacity-70">
+          {saving ? "Saving…" : product ? "Save Changes" : "Add Product"}
         </button>
         <Link
           href={`/admin/products${selectedCategory ? `?category=${selectedCategory}#category-${selectedCategory}` : ""}`}

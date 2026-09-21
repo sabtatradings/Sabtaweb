@@ -7,7 +7,11 @@
 // else they behave exactly like the originals.
 
 import { headers } from "next/headers"
-import { revalidatePath as nextRevalidatePath, updateTag as nextUpdateTag } from "next/cache"
+import {
+  revalidatePath as nextRevalidatePath,
+  revalidateTag as nextRevalidateTag,
+  updateTag as nextUpdateTag,
+} from "next/cache"
 import { ADMIN_HOST, MAIN_SITE_URL, normalizeHost } from "./hosts"
 
 async function forward(payload: { paths?: string[]; tags?: string[] }) {
@@ -32,6 +36,13 @@ export function revalidatePath(path: string, type?: "page" | "layout") {
 }
 
 export function updateTag(tag: string) {
-  nextUpdateTag(tag)
+  try {
+    nextUpdateTag(tag)
+  } catch {
+    // updateTag only works inside Server Actions; the admin's plain-form save
+    // endpoints are Route Handlers, where revalidateTag(…, expire: 0) is the
+    // equivalent immediate purge.
+    nextRevalidateTag(tag, { expire: 0 })
+  }
   void forward({ tags: [tag] })
 }

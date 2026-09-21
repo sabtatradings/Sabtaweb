@@ -3,7 +3,6 @@
 import fs from "fs"
 import path from "path"
 import sharp from "sharp"
-import { redirect } from "next/navigation"
 import { revalidatePath } from "@/lib/revalidate"
 import { v2 as cloudinary } from "cloudinary"
 import { requireAdmin } from "@/lib/auth"
@@ -97,7 +96,8 @@ function revalidateProductPaths(categorySlug: string, slug?: string) {
 // Products Actions
 // -------------------------------------------------------------
 
-export async function createProductAction(formData: FormData) {
+/** Returns the admin path to send the browser to next (see /admin/save/product). */
+export async function createProductAction(formData: FormData): Promise<string> {
   await requireAdmin()
 
   const categorySlug = String(formData.get("categorySlug") || "")
@@ -123,10 +123,10 @@ export async function createProductAction(formData: FormData) {
   }
 
   revalidateProductPaths(product.categorySlug, product.slug)
-  redirect(`/admin/products?category=${product.categorySlug}#category-${product.categorySlug}`)
+  return `/admin/products?category=${product.categorySlug}#category-${product.categorySlug}`
 }
 
-export async function updateProductAction(id: string, formData: FormData) {
+export async function updateProductAction(id: string, formData: FormData): Promise<string> {
   await requireAdmin()
 
   const existing = await getProductById(id)
@@ -154,7 +154,7 @@ export async function updateProductAction(id: string, formData: FormData) {
 
   revalidateProductPaths(existing.categorySlug, existing.slug)
   revalidateProductPaths(updated.categorySlug, updated.slug)
-  redirect(`/admin/products?category=${updated.categorySlug}#category-${updated.categorySlug}`)
+  return `/admin/products?category=${updated.categorySlug}#category-${updated.categorySlug}`
 }
 
 export async function deleteProductAction(id: string) {
@@ -190,7 +190,7 @@ export async function saveSiteSettingsAction(key: string, data: any) {
 // Categories Actions
 // -------------------------------------------------------------
 
-export async function createCategoryAction(formData: FormData) {
+export async function createCategoryAction(formData: FormData): Promise<string> {
   await requireAdmin()
   const slug = String(formData.get("slug") || "").trim().toLowerCase()
   const name = String(formData.get("name") || "").trim()
@@ -222,10 +222,10 @@ export async function createCategoryAction(formData: FormData) {
   if (!ok) throw new Error("Failed to create category")
   revalidatePath("/")
   revalidatePath("/products")
-  redirect("/admin/categories")
+  return "/admin/categories"
 }
 
-export async function updateCategoryAction(slug: string, formData: FormData) {
+export async function updateCategoryAction(slug: string, formData: FormData): Promise<string> {
   await requireAdmin()
   const name = String(formData.get("name") || "").trim()
   const shortDescription = String(formData.get("shortDescription") || "").trim()
@@ -255,7 +255,7 @@ export async function updateCategoryAction(slug: string, formData: FormData) {
   revalidatePath("/")
   revalidatePath("/products")
   revalidatePath(`/categories/${slug}`)
-  redirect("/admin/categories")
+  return "/admin/categories"
 }
 
 export async function deleteCategoryAction(slug: string) {

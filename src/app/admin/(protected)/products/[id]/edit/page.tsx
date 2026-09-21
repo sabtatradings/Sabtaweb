@@ -5,7 +5,6 @@ import { getCategories, getProductById } from "@/lib/db"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { ProductForm } from "@/components/admin/product-form"
-import { updateProductAction } from "@/app/admin/actions"
 
 export const metadata: Metadata = {
   title: "Edit Product",
@@ -14,9 +13,16 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic"
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
+}) {
   await requireAdmin()
   const { id } = await params
+  const { error } = await searchParams
   const [product, categories] = await Promise.all([
     getProductById(id),
     getCategories(),
@@ -24,7 +30,6 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   if (!product) notFound()
 
   const currentCategory = categories.find((c) => c.slug === product.categorySlug)
-  const action = updateProductAction.bind(null, id)
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 md:px-8">
@@ -39,7 +44,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <h1 className="text-2xl font-extrabold uppercase tracking-tight text-foreground">Edit Product</h1>
       <p className="mt-1 text-sm text-muted-foreground">{product.name}</p>
       <div className="mt-8">
-        <ProductForm categories={categories} product={product} action={action} />
+        <ProductForm categories={categories} product={product} error={error} />
       </div>
     </div>
   )

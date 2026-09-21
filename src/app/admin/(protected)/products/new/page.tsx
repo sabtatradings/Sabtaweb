@@ -4,7 +4,6 @@ import { ArrowLeft } from "lucide-react"
 import { requireAdmin } from "@/lib/auth"
 import { getCategories } from "@/lib/db"
 import { ProductForm } from "@/components/admin/product-form"
-import { createProductAction } from "@/app/admin/actions"
 
 export const metadata: Metadata = {
   title: "Add Product",
@@ -16,10 +15,10 @@ export const dynamic = "force-dynamic"
 export default async function NewProductPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>
+  searchParams: Promise<{ category?: string; error?: string }>
 }) {
   await requireAdmin()
-  const { category } = await searchParams
+  const { category, error } = await searchParams
   const categories = await getCategories()
   const currentCategory = categories.find((c) => c.slug === category)
 
@@ -38,7 +37,7 @@ export default async function NewProductPage({
         {currentCategory ? `Adding to ${currentCategory.name}` : "This will appear on the site immediately."}
       </p>
       <div className="mt-8">
-        <ProductForm categories={categories} initialCategorySlug={category} action={createProductAction} />
+        <ProductForm categories={categories} initialCategorySlug={category} error={error} />
       </div>
     </div>
   )

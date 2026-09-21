@@ -4,8 +4,6 @@ import { useRef, useState, useTransition } from "react"
 import { GripVertical, ImageUp, Pencil, Plus, Trash2, X } from "lucide-react"
 import type { CategoryMeta } from "@/lib/site-data"
 import {
-  createCategoryAction,
-  updateCategoryAction,
   deleteCategoryAction,
   reorderCategoriesAction,
   uploadMediaAction,
@@ -160,14 +158,8 @@ export function CategoryEditor({ initialCategories }: { initialCategories: Categ
               {editingCategory ? `Edit Range: ${editingCategory.name}` : "Add Product Range"}
             </h3>
 
-            <form
-              action={
-                editingCategory
-                  ? updateCategoryAction.bind(null, editingCategory.slug)
-                  : createCategoryAction
-              }
-              className="mt-6 flex flex-col gap-4 text-sm"
-            >
+            <form method="post" action="/admin/save/category" className="mt-6 flex flex-col gap-4 text-sm">
+              {editingCategory && <input type="hidden" name="originalSlug" value={editingCategory.slug} />}
               {!editingCategory && (
                 <div>
                   <label htmlFor="slug" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
