@@ -4,29 +4,45 @@
 //
 // Configure via environment variables (see .env.local):
 //   ADMIN_PASSWORD        — the password required to log into /admin
-//   ADMIN_SESSION_SECRET  — secret used to sign the session cookie
-// Both have fallback defaults below so the admin works out of the box, but
-// you should set your own values in .env.local for a real deployment.
+//   ADMIN_SESSION_SECRET  — OPTIONAL. If unset, the cookie-signing key is
+//                           derived from the other server-side env vars, so
+//                           nothing extra needs configuring.
+// Sessions are just a signed cookie: log in from any device, anywhere, with
+// the password — nothing is tied to an IP, device or server.
 
 import crypto from "crypto"
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 const COOKIE_NAME = "sabta_admin_session"
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
 
 const FALLBACK_PASSWORD = "Sabta@Admin2026"
-const FALLBACK_SECRET = "sabta-trading-admin-fallback-secret-please-override"
 
 function getAdminPassword() {
   return process.env.ADMIN_PASSWORD || FALLBACK_PASSWORD
 }
 
 function getSecret() {
-  return process.env.ADMIN_SESSION_SECRET || FALLBACK_SECRET
+  if (process.env.ADMIN_SESSION_SECRET) return process.env.ADMIN_SESSION_SECRET
+  // No dedicated secret configured: derive the signing key from server-only
+  // env values (never sent to the browser), so it is private and stable across
+  // restarts. Changing the admin password signs everyone out.
+  return crypto
+    .createHash("sha256")
+    .update(
+      [
+        "sabta-admin-session",
+        getAdminPassword(),
+        process.env.ADMIN_EMAIL || "",
+        process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+      ].join("\u0000"),
+    )
+    .digest("hex")
 }
 
 import { supabase, isSupabaseConfigured } from "./supabase"
+import { ADMIN_HOST, MAIN_HOST, normalizeHost } from "./hosts"
 
 function sign(value: string) {
   return crypto.createHmac("sha256", getSecret()).update(value).digest("hex")
@@ -72,16 +88,22 @@ export async function createSession() {
   const payload = `admin:${expires}`
   const value = `${Buffer.from(payload, "utf8").toString("base64url")}.${sign(payload)}`
   const store = await cookies()
-  // Cookie "Secure" mode is opt-in (ADMIN_COOKIE_SECURE=true) rather than
-  // tied to NODE_ENV — `next start` runs in production mode even on a
-  // plain-HTTP local server, and a Secure cookie is silently dropped by the
-  // browser over HTTP, which would make it impossible to log in. Set
-  // ADMIN_COOKIE_SECURE=true in .env.local once the site is served over
-  // HTTPS.
+  // "Secure" is switched on automatically whenever the request came in over
+  // HTTPS (or on the real .com/.org domains, which are always HTTPS). A Secure
+  // cookie is silently dropped over plain http://, so plain-HTTP localhost
+  // keeps working. ADMIN_COOKIE_SECURE=true still forces it on.
+  const h = await headers()
+  const proto = (h.get("x-forwarded-proto") || "").split(",")[0].trim().toLowerCase()
+  const host = normalizeHost(h.get("x-forwarded-host") || h.get("host") || "")
+  const secure =
+    process.env.ADMIN_COOKIE_SECURE === "true" ||
+    proto === "https" ||
+    host === ADMIN_HOST ||
+    host === MAIN_HOST
   store.set(COOKIE_NAME, value, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.ADMIN_COOKIE_SECURE === "true",
+    secure,
     path: "/",
     expires: new Date(expires),
   })

@@ -24,6 +24,9 @@ const nextConfig = {
       // Admin product-photo uploads (actions.ts) need room for real camera/
       // supplier photos (often 5-15MB) before sharp downsizes them.
       bodySizeLimit: "15mb",
+      // The admin panel is served from its own domain (see src/proxy.ts);
+      // allow its form/server-action posts when a reverse proxy rewrites Host.
+      allowedOrigins: ["sabtadxb.org", "www.sabtadxb.org"],
     },
   },
   async headers() {

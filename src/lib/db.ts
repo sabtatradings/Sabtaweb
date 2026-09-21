@@ -1,6 +1,7 @@
 import { supabase, supabaseAdmin, isSupabaseConfigured } from "./supabase"
 import { readAllProducts } from "./products"
-import { unstable_cache, updateTag } from "next/cache"
+import { unstable_cache } from "next/cache"
+import { updateTag } from "./revalidate"
 import {
   siteConfig as staticSiteConfig,
   contactInfo as staticContactInfo,
