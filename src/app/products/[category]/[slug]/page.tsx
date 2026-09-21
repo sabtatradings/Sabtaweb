@@ -9,8 +9,14 @@ import { ProductCard } from "@/components/product-card"
 import { ProductDetailActions } from "@/components/product-detail-actions"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { CtaBanner } from "@/components/home/cta-banner"
+import { RelatedGuides } from "@/components/related-guides"
 import { catalogPdfPath } from "@/lib/site-data"
+import { JsonLd } from "@/components/json-ld"
 import { getCategoryWithItems, getProduct, getProducts, getSiteConfig } from "@/lib/db"
+import { buildMetadata, withCta } from "@/lib/seo"
+import { readAllPosts } from "@/lib/blog"
+import { guidesFor } from "@/lib/related"
+import { graph, productNode, webPageNode } from "@/lib/structured-data"
 
 export const revalidate = 30
 
@@ -30,16 +36,20 @@ export async function generateMetadata({
     getSiteConfig(),
   ])
   if (!product) return {}
-  return {
-    title: product.name,
-    description: `${product.description} Stocked by ${siteConfig.name}, Dubai UAE.`,
-    alternates: { canonical: `/products/${categorySlug}/${product.slug}` },
-  }
+  const spec = [product.grade, product.standard].filter(Boolean).join(", ")
+  const cover = product.images?.[0] ?? product.image
+  const withSpec = spec ? `${product.name} (${spec}) in Dubai` : `${product.name} in Dubai, UAE`
+  return buildMetadata(siteConfig, {
+    title: withSpec.length <= 60 ? withSpec : `${product.name} in Dubai, UAE`,
+    description: withCta(product.description, "Request a quote in Dubai."),
+    path: `/products/${categorySlug}/${product.slug}`,
+    image: cover ? { url: cover, alt: product.name } : undefined,
+  })
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   const { category: categorySlug, slug } = await params
-  const [category, siteConfig] = await Promise.all([getCategoryWithItems(categorySlug), getSiteConfig()])
+  const [category, siteConfig, posts] = await Promise.all([getCategoryWithItems(categorySlug), getSiteConfig(), readAllPosts()])
   if (!category) notFound()
 
   const product = category.items.find((p) => p.slug === slug)
@@ -49,21 +59,19 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
 
   const gallery = product.images && product.images.length > 0 ? product.images : product.image ? [product.image] : []
 
-  // No `offers`/price block: Sabta is a request-a-quote distributor with no
-  // listed prices, and Google's Product rich-result guidelines require a
-  // real price on any `offers` entry — inventing one would be inaccurate.
-  const productJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.name,
-    description: product.description,
-    ...(gallery.length > 0 ? { image: gallery.map((src) => `${siteConfig.url}${src}`) } : {}),
-    category: category.name,
-    ...(product.grade || product.standard
-      ? { additionalProperty: [product.grade, product.standard].filter(Boolean).map((value) => ({ "@type": "PropertyValue", name: "Grade/Standard", value })) }
-      : {}),
-    brand: { "@type": "Organization", name: siteConfig.name },
-  }
+  const productPath = `/products/${category.slug}/${product.slug}`
+  const productJsonLd = graph([
+    webPageNode(siteConfig, {
+      path: productPath,
+      name: product.name,
+      description: product.description,
+      type: "ItemPage",
+      image: gallery[0],
+      speakable: ["h1", "[data-speakable]"],
+      extra: { mainEntity: { "@id": `${siteConfig.url.replace(/\/+$/, "")}${productPath}#product` } },
+    }),
+    productNode(siteConfig, category, product, gallery),
+  ])
 
   const specRows = [
     product.grade ? { label: "Grade", value: product.grade } : null,
@@ -76,7 +84,7 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <JsonLd data={productJsonLd} />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 md:px-8 md:py-14 lg:px-12">
         <Breadcrumbs
@@ -93,7 +101,7 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
               {gallery.length > 0 ? (
                 <Image
                   src={gallery[0]}
-                  alt={product.name}
+                  alt={`${product.name}${product.grade ? `, ${product.grade}` : ""}: ${category.name} stocked in Dubai`}
                   fill
                   sizes="(min-width: 1024px) 45vw, 100vw"
                   quality={95}
@@ -110,7 +118,7 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
               <div className="mt-4 grid grid-cols-4 gap-3">
                 {gallery.slice(1).map((src) => (
                   <div key={src} className="relative aspect-square overflow-hidden rounded-lg border border-border bg-white">
-                    <Image src={src} alt={product.name} fill sizes="120px" className="object-contain p-2" />
+                    <Image src={src} alt={`${product.name}, view ${gallery.indexOf(src) + 1}`} fill sizes="120px" className="object-contain p-2" />
                   </div>
                 ))}
               </div>
@@ -140,7 +148,7 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
                 </p>
               )}
 
-              <p className="mt-5 text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">{product.description}</p>
+              <p data-speakable className="mt-5 text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">{product.description}</p>
 
               <div className="mt-8 overflow-x-auto rounded-xl border border-border">
                 <table className="w-full text-sm">
@@ -233,6 +241,8 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
             </div>
           </div>
         )}
+
+        <RelatedGuides posts={guidesFor(posts, { categorySlug: category.slug, productName: product.name })} heading="Related Buying Guides" />
       </div>
 
       <CtaBanner />

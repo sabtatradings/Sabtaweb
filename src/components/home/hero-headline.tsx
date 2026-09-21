@@ -64,12 +64,11 @@ export function HeroHeadline({ text }: { text: string }) {
   const words = text.split(" ")
 
   return (
-    <h1 className={HEADLINE_CLASS}>
-      {/* Screen readers get the whole line at once; the split spans below are
-          purely presentational so the sentence is never announced word-by-word. */}
-      <span className="sr-only">{text}</span>
-
-      <span aria-hidden="true">
+    <h1 className={HEADLINE_CLASS} aria-label={text}>
+      {/* The accessible name is the whole line (aria-label), so screen readers
+          never announce it word by word, and the heading's text exists exactly
+          once in the DOM for crawlers (no visually-hidden duplicate). */}
+      <span>
         {words.map((word, i) => (
           <span
             key={`${word}-${i}`}

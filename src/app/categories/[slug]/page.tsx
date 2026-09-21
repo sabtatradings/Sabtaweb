@@ -6,7 +6,13 @@ import { Breadcrumbs } from "@/components/breadcrumbs"
 import { ProductCard } from "@/components/product-card"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { CtaBanner } from "@/components/home/cta-banner"
+import { RelatedGuides } from "@/components/related-guides"
+import { JsonLd } from "@/components/json-ld"
 import { getSiteConfig, getCategories, getCategoryWithItems } from "@/lib/db"
+import { buildMetadata, withCta } from "@/lib/seo"
+import { readAllPosts } from "@/lib/blog"
+import { guidesFor } from "@/lib/related"
+import { graph, itemListNode, webPageNode } from "@/lib/structured-data"
 
 export const revalidate = 30
 
@@ -23,26 +29,49 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   ])
   const category = categories.find((c) => c.slug === slug)
   if (!category) return {}
-  return {
-    title: category.name,
-    description: `${category.description} Stocked by ${siteConfig.name}, Dubai UAE.`,
-    alternates: { canonical: `/categories/${category.slug}` },
-  }
+  const withItems = await getCategoryWithItems(slug)
+  const image = category.image ?? withItems?.items.find((i) => i.image)?.image
+  return buildMetadata(siteConfig, {
+    title: `${category.name} in Dubai, UAE`,
+    description: withCta(`${category.shortDescription} ${withItems?.items.length ?? 0} product types stocked by ${siteConfig.shortName} in Dubai, UAE.`, "Request a quote."),
+    path: `/categories/${category.slug}`,
+    image: image ? { url: image, alt: `${category.name} stocked by ${siteConfig.shortName}, Dubai` } : undefined,
+  })
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const [category, categories] = await Promise.all([
+  const [category, categories, posts] = await Promise.all([
     getCategoryWithItems(slug),
     getCategories(),
+    readAllPosts(),
   ])
 
   if (!category) notFound()
 
   const others = categories.filter((c) => c.slug !== category.slug)
+  const siteConfig = await getSiteConfig()
+  const categoryJsonLd = graph([
+    webPageNode(siteConfig, {
+      path: `/categories/${category.slug}`,
+      name: `${category.name} in Dubai, UAE`,
+      description: category.description,
+      type: "CollectionPage",
+      image: category.image ?? category.items.find((i) => i.image)?.image,
+      speakable: ["h1", "[data-speakable]"],
+      extra: {
+        mainEntity: itemListNode(
+          siteConfig,
+          category.items.map((i) => ({ name: i.name, path: `/products/${category.slug}/${i.slug}`, image: i.image })),
+          { name: category.name },
+        ),
+      },
+    }),
+  ])
 
   return (
     <>
+      <JsonLd data={categoryJsonLd} />
       <section className="relative overflow-hidden bg-primary">
         <div className="absolute inset-0 surface-grid opacity-[0.05]" aria-hidden="true" />
         <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-18 md:px-8 md:py-20 lg:px-12">
@@ -52,7 +81,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
               {category.name}
             </h1>
           </div>
-          <p className="mt-5 max-w-2xl text-pretty text-sm leading-relaxed text-primary-foreground/75 md:text-base">{category.description}</p>
+          <p data-speakable className="mt-5 max-w-2xl text-pretty text-sm leading-relaxed text-primary-foreground/75 md:text-base">{category.description}</p>
         </div>
       </section>
 
@@ -78,6 +107,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
             ))}
           </div>
         </ScrollReveal>
+
+        <RelatedGuides posts={guidesFor(posts, { categorySlug: category.slug })} heading={`${category.name}: Buying Guides`} />
 
         <div className="mt-16 border-t border-border pt-12 md:mt-20">
           <h2 className="text-xl font-extrabold uppercase tracking-tight text-foreground">Other Ranges</h2>

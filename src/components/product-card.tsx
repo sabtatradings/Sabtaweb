@@ -11,7 +11,7 @@ export function ProductCard({ item, color, icon }: { item: Product; color: strin
         {item.image ? (
           <Image
             src={item.image}
-            alt={item.name}
+            alt={item.grade ? `${item.name}, ${item.grade}` : item.name}
             fill
             sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
             className="object-contain p-4 transition-transform duration-300 group-hover:scale-105"

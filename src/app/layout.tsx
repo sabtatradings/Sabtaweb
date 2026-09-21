@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Outfit } from "next/font/google"
 import "./globals.css"
 import { SiteHeader } from "@/components/site-header"
@@ -7,6 +7,9 @@ import { WhatsAppButton } from "@/components/whatsapp-button"
 import { LoadingScreen } from "@/components/loading-screen"
 import { Providers } from "@/components/providers"
 import { DeferredWidgets } from "@/components/deferred-widgets"
+import { JsonLd } from "@/components/json-ld"
+import { buildMetadata } from "@/lib/seo"
+import { graph, organizationNode, websiteNode } from "@/lib/structured-data"
 import {
   getSiteConfig,
   getContactInfo,
@@ -23,18 +26,45 @@ const outfit = Outfit({
   weight: ["300", "400", "500", "600", "700", "800"],
 })
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#1b2a80",
+}
+
 export async function generateMetadata(): Promise<Metadata> {
-  const siteConfig = await getSiteConfig()
-  const titleDefault = `${siteConfig.name} | ${siteConfig.tagline}`
-  return {
-    metadataBase: new URL(siteConfig.url),
-    title: {
-      default: titleDefault,
-      template: `%s | ${siteConfig.name}`,
-    },
+  const [siteConfig, contactInfo] = await Promise.all([getSiteConfig(), getContactInfo()])
+  const home = buildMetadata(siteConfig, {
+    title: `${siteConfig.name} | ${siteConfig.tagline}`,
+    absoluteTitle: true,
     description: siteConfig.description,
-    alternates: {
-      canonical: "/",
+    path: "/",
+  })
+  return {
+    ...home,
+    metadataBase: new URL(siteConfig.url),
+    // Pages set their own canonical via buildMetadata(); no site-wide default,
+    // so a page can never accidentally canonicalise to the homepage.
+    alternates: undefined,
+    title: {
+      default: `${siteConfig.name} | ${siteConfig.tagline}`,
+      template: `%s | ${siteConfig.shortName}`,
+    },
+    applicationName: siteConfig.name,
+    authors: [{ name: siteConfig.name, url: siteConfig.url }],
+    creator: siteConfig.name,
+    publisher: siteConfig.name,
+    category: "Industrial hardware and fasteners",
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
     icons: {
       icon: [
@@ -44,19 +74,12 @@ export async function generateMetadata(): Promise<Metadata> {
       ],
       apple: "/brand/apple-touch-icon.png",
     },
-    openGraph: {
-      title: titleDefault,
-      description: siteConfig.description,
-      url: siteConfig.url,
-      siteName: siteConfig.name,
-      images: ["/brand/logo.png"],
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: titleDefault,
-      description: siteConfig.description,
-      images: ["/brand/logo.png"],
+    other: {
+      // Legacy but still-read local signals for a physical Dubai business.
+      "geo.region": "AE-DU",
+      "geo.placename": "Dubai",
+      "geo.position": `${contactInfo.lat};${contactInfo.lng}`,
+      ICBM: `${contactInfo.lat}, ${contactInfo.lng}`,
     },
   }
 }
@@ -90,37 +113,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     quickReplies,
   }
 
-  const organizationJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: siteConfig.name,
-    url: siteConfig.url,
-    logo: `${siteConfig.url}/brand/logo.png`,
-    foundingDate: String(siteConfig.founded),
-    description: siteConfig.description,
-    contactPoint: {
-      "@type": "ContactPoint",
-      telephone: contactInfo.phone,
-      contactType: "sales",
-      areaServed: "AE",
-    },
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: contactInfo.address,
-      addressLocality: contactInfo.addressLocality,
-      addressCountry: contactInfo.addressCountry,
-    },
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: contactInfo.lat,
-      longitude: contactInfo.lng,
-    },
-  }
+  const siteJsonLd = graph([organizationNode(siteConfig, contactInfo, categories), websiteNode(siteConfig)])
 
   return (
     <html lang="en" className={`${outfit.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex min-h-full flex-col bg-background text-foreground" suppressHydrationWarning>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+        <JsonLd data={siteJsonLd} />
         <Providers siteData={siteData}>
           <LoadingScreen />
           <a

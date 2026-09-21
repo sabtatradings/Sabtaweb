@@ -5,8 +5,14 @@ import { Breadcrumbs } from "@/components/breadcrumbs"
 import { BlogPostCard } from "@/components/blog-post-card"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { CtaBanner } from "@/components/home/cta-banner"
-import { getSiteConfig } from "@/lib/db"
+import Link from "next/link"
+import { ArrowRight } from "lucide-react"
+import { JsonLd } from "@/components/json-ld"
+import { getCategories, getSiteConfig } from "@/lib/db"
 import { getPost, getRelatedPosts, readAllPosts, type BlogContentBlock } from "@/lib/blog"
+import { buildMetadata, snippet } from "@/lib/seo"
+import { rangesFor } from "@/lib/related"
+import { blogPostingNode, graph, webPageNode } from "@/lib/structured-data"
 
 export async function generateStaticParams() {
   return (await readAllPosts()).map((post) => ({ slug: post.slug }))
@@ -14,20 +20,17 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const post = await getPost(slug)
+  const [post, siteConfig] = await Promise.all([getPost(slug), getSiteConfig()])
   if (!post) return {}
-  return {
+  return buildMetadata(siteConfig, {
     title: post.title,
-    description: post.excerpt,
-    alternates: { canonical: `/blog/${post.slug}` },
-    openGraph: {
-      title: post.title,
-      description: post.excerpt,
-      type: "article",
-      publishedTime: post.publishedAt,
-      images: [post.coverImage],
-    },
-  }
+    description: snippet(post.excerpt),
+    path: `/blog/${post.slug}`,
+    image: { url: post.coverImage, alt: post.coverAlt },
+    type: "article",
+    publishedTime: post.publishedAt,
+    section: post.category,
+  })
 }
 
 function formatDate(iso: string) {
@@ -58,29 +61,27 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const post = await getPost(slug)
   if (!post) notFound()
 
-  const [siteConfig, related] = await Promise.all([getSiteConfig(), getRelatedPosts(slug, 3)])
+  const [siteConfig, related, categories] = await Promise.all([getSiteConfig(), getRelatedPosts(slug, 3), getCategories()])
+  const ranges = rangesFor(post, categories)
 
-  const articleJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: post.title,
-    description: post.excerpt,
-    image: [`${siteConfig.url}${post.coverImage}`],
-    datePublished: post.publishedAt,
-    dateModified: post.publishedAt,
-    author: { "@type": "Organization", name: siteConfig.name, url: siteConfig.url },
-    publisher: {
-      "@type": "Organization",
-      name: siteConfig.name,
-      url: siteConfig.url,
-      logo: { "@type": "ImageObject", url: `${siteConfig.url}/brand/logo.png` },
-    },
-    mainEntityOfPage: { "@type": "WebPage", "@id": `${siteConfig.url}/blog/${post.slug}` },
-  }
+  const articleJsonLd = graph([
+    webPageNode(siteConfig, {
+      path: `/blog/${post.slug}`,
+      name: post.title,
+      description: post.excerpt,
+      type: "WebPage",
+      image: post.coverImage,
+      datePublished: post.publishedAt,
+      dateModified: post.publishedAt,
+      speakable: ["h1", "[data-speakable]"],
+      extra: { mainEntity: { "@id": `${siteConfig.url.replace(/\/+$/, "")}/blog/${post.slug}#article` } },
+    }),
+    blogPostingNode(siteConfig, post),
+  ])
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
+      <JsonLd data={articleJsonLd} />
 
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10 md:px-8 md:py-14 lg:px-12">
         <Breadcrumbs crumbs={[{ label: "Blog", href: "/blog" }, { label: post.title }]} />
@@ -104,7 +105,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             {post.title}
           </h1>
 
-          <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground">{post.excerpt}</p>
+          <p data-speakable className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground">{post.excerpt}</p>
 
           <div className="relative mt-8 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-border bg-white">
             <Image src={post.coverImage} alt={post.coverAlt} fill sizes="(min-width: 768px) 720px, 100vw" className="object-contain p-10" priority />
@@ -118,6 +119,25 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             ))}
           </article>
         </ScrollReveal>
+
+        {ranges.length > 0 && (
+          <div className="mt-14 rounded-2xl border border-border bg-secondary/40 p-6">
+            <h2 className="text-sm font-extrabold uppercase tracking-wider text-foreground">Ranges mentioned in this guide</h2>
+            <ul className="mt-4 flex flex-wrap gap-2.5">
+              {ranges.map((range) => (
+                <li key={range.slug}>
+                  <Link
+                    href={`/categories/${range.slug}`}
+                    className="group inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold text-foreground transition-colors hover:border-accent hover:text-accent"
+                  >
+                    {range.name}
+                    <ArrowRight className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {related.length > 0 && (
           <div className="mt-16 border-t border-border pt-12 md:mt-20">

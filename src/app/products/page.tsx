@@ -6,7 +6,10 @@ import { ScrollReveal } from "@/components/scroll-reveal"
 import { ProductsBrowser, type FlatItem } from "@/components/products-browser"
 import { CtaBanner } from "@/components/home/cta-banner"
 import { catalogPdfPath } from "@/lib/site-data"
+import { JsonLd } from "@/components/json-ld"
 import { getSiteConfig, getCategories, getAllCategoriesWithItems } from "@/lib/db"
+import { buildMetadata } from "@/lib/seo"
+import { graph, itemListNode, webPageNode } from "@/lib/structured-data"
 
 export const revalidate = 30
 
@@ -15,11 +18,11 @@ export async function generateMetadata(): Promise<Metadata> {
     getSiteConfig(),
     getCategories(),
   ])
-  return {
-    title: "Products",
-    description: `Browse all ${categories.length} fastener and marine rigging hardware ranges stocked by ${siteConfig.name}, ${siteConfig.itemsInStock} items in stock, Dubai UAE.`,
-    alternates: { canonical: "/products" },
-  }
+  return buildMetadata(siteConfig, {
+    title: "Fastener & Marine Hardware Catalogue, Dubai",
+    description: `Browse all ${categories.length} fastener, rigging and marine hardware ranges from ${siteConfig.shortName} in Dubai, UAE: ${siteConfig.itemsInStock} items in 304/316 stainless and GI.`,
+    path: "/products",
+  })
 }
 
 export default async function ProductsPage() {
@@ -41,8 +44,25 @@ export default async function ProductsPage() {
     })),
   )
 
+  const productsJsonLd = graph([
+    webPageNode(siteConfig, {
+      path: "/products",
+      name: `${siteConfig.shortName} product catalogue`,
+      description: `Fastener, rigging and marine hardware ranges stocked by ${siteConfig.name} in Dubai, UAE.`,
+      type: "CollectionPage",
+      extra: {
+        mainEntity: itemListNode(
+          siteConfig,
+          categoriesWithItems.map((c) => ({ name: c.name, path: `/categories/${c.slug}`, image: c.image ?? c.items[0]?.image })),
+          { name: "Product ranges" },
+        ),
+      },
+    }),
+  ])
+
   return (
     <>
+      <JsonLd data={productsJsonLd} />
       <section className="bg-primary">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 md:px-8 md:py-24 lg:px-12">
           <p className="eyebrow !text-accent">Product Catalogue</p>

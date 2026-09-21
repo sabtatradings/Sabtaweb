@@ -90,7 +90,7 @@ export async function Hero() {
 
             <HeroHeadline text="Fastener & Marine Rigging Hardware, Ready to Ship" />
 
-            <p className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-primary-foreground/80 md:text-lg">
+            <p data-speakable className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-primary-foreground/80 md:text-lg">
               Dubai-based fastener and marine rigging hardware distributor since 1994. {siteConfig.itemsInStock} items in
               stock for Automotive, Manufacturing, Marine and Oilfield &mdash; anything else, we source it.
             </p>

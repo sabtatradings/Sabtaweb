@@ -3,15 +3,18 @@ import { ChevronRight, ExternalLink, Mail, MapPin, MessageCircle, Phone } from "
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { ContactForm } from "@/components/contact-form"
 import { ScrollReveal } from "@/components/scroll-reveal"
+import { JsonLd } from "@/components/json-ld"
 import { getSiteConfig, getContactInfo } from "@/lib/db"
+import { buildMetadata } from "@/lib/seo"
+import { graph, orgId, webPageNode } from "@/lib/structured-data"
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = await getSiteConfig()
-  return {
-    title: "Contact Us",
-    description: `Contact ${siteConfig.name} in Dubai, UAE: call, WhatsApp or email our sales team for a fastener or marine rigging hardware quote.`,
-    alternates: { canonical: "/contact" },
-  }
+  return buildMetadata(siteConfig, {
+    title: "Contact & Location, Baniyas Square Dubai",
+    description: `Contact ${siteConfig.name} at Baniyas Square, Dubai: call +971 4 2210506, WhatsApp or email our sales team for a fastener or marine rigging hardware quote.`,
+    path: "/contact",
+  })
 }
 
 export default async function ContactPage({
@@ -25,15 +28,27 @@ export default async function ContactPage({
     getContactInfo(),
   ])
 
+  const contactJsonLd = graph([
+    webPageNode(siteConfig, {
+      path: "/contact",
+      name: `Contact ${siteConfig.name}`,
+      description: `Phone, WhatsApp, email and location of ${siteConfig.name}, Dubai, UAE.`,
+      type: "ContactPage",
+      speakable: ["h1", "[data-speakable]"],
+      extra: { mainEntity: { "@id": orgId(siteConfig) } },
+    }),
+  ])
+
   return (
     <>
+      <JsonLd data={contactJsonLd} />
       <section className="bg-primary">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 md:px-8 md:py-24 lg:px-12">
           <p className="eyebrow !text-accent">Get In Touch</p>
           <h1 className="mt-4 text-balance text-3xl font-extrabold uppercase tracking-tight text-primary-foreground md:text-5xl lg:text-6xl">
             Contact Sabta Trading
           </h1>
-          <p className="mt-5 max-w-xl text-pretty text-sm leading-relaxed text-primary-foreground/70 md:text-base">
+          <p data-speakable className="mt-5 max-w-xl text-pretty text-sm leading-relaxed text-primary-foreground/70 md:text-base">
             Speak directly to our sales team by phone, WhatsApp or email, or send an enquiry below.
           </p>
         </div>

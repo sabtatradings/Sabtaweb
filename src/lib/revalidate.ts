@@ -13,6 +13,7 @@ import {
   updateTag as nextUpdateTag,
 } from "next/cache"
 import { ADMIN_HOST, MAIN_SITE_URL, normalizeHost } from "./hosts"
+import { notifyIndexNow } from "./indexnow"
 
 async function forward(payload: { paths?: string[]; tags?: string[] }) {
   try {
@@ -33,6 +34,7 @@ async function forward(payload: { paths?: string[]; tags?: string[] }) {
 export function revalidatePath(path: string, type?: "page" | "layout") {
   nextRevalidatePath(path, type)
   void forward({ paths: [path] })
+  notifyIndexNow(path)
 }
 
 export function updateTag(tag: string) {

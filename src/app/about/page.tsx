@@ -8,22 +8,27 @@ import { ScrollReveal } from "@/components/scroll-reveal"
 import { TiltImage } from "@/components/ui/tilt-image"
 import { CtaBanner } from "@/components/home/cta-banner"
 import { Industries } from "@/components/home/industries"
-import { getSiteConfig, getContactInfo, getCategories } from "@/lib/db"
+import { JsonLd } from "@/components/json-ld"
+import { getSiteConfig, getContactInfo, getCategories, getIndustries } from "@/lib/db"
+import { buildMetadata } from "@/lib/seo"
+import { graph, orgId, webPageNode } from "@/lib/structured-data"
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = await getSiteConfig()
-  return {
-    title: "About Us",
-    description: `${siteConfig.name}, Dubai-based fastener and marine rigging hardware distributor since ${siteConfig.founded}. Learn about our company profile and the industries we serve.`,
-    alternates: { canonical: "/about" },
-  }
+  return buildMetadata(siteConfig, {
+    title: `About ${siteConfig.shortName}: Dubai Fastener Distributor Since ${siteConfig.founded}`,
+    description: `${siteConfig.name} was founded in Dubai in ${siteConfig.founded} by Saifuddin Ismail and stocks ${siteConfig.itemsInStock} fastener and marine rigging items.`,
+    path: "/about",
+    absoluteTitle: true,
+  })
 }
 
 export default async function AboutPage() {
-  const [siteConfig, contactInfo, categories] = await Promise.all([
+  const [siteConfig, contactInfo, categories, industries] = await Promise.all([
     getSiteConfig(),
     getContactInfo(),
     getCategories(),
+    getIndustries(),
   ])
 
   const years = new Date().getFullYear() - siteConfig.founded
@@ -35,8 +40,33 @@ export default async function AboutPage() {
     { icon: Users, value: contactInfo.contacts.length + 1, suffix: "", label: "Direct Sales Contacts" },
   ]
 
+  const aboutJsonLd = graph([
+    webPageNode(siteConfig, {
+      path: "/about",
+      name: `About ${siteConfig.name}`,
+      description: siteConfig.description,
+      type: "AboutPage",
+      image: "/team/saifuddin-ismail.jpg",
+      speakable: ["h1", "[data-speakable]"],
+      extra: { mainEntity: { "@id": orgId(siteConfig) } },
+    }),
+  ])
+
+  const facts: { label: string; value: string }[] = [
+    { label: "Company", value: `${siteConfig.name} (${siteConfig.nameAr})` },
+    { label: "Founded", value: `${siteConfig.founded}, Dubai, United Arab Emirates` },
+    { label: "Founder", value: "Saifuddin Ismail, Founder & Chairman" },
+    { label: "What we do", value: "Distributor of fasteners and marine rigging hardware" },
+    { label: "Stock", value: `${siteConfig.itemsInStock} items across ${categories.length} product ranges` },
+    { label: "Materials & grades", value: "Zinc-plated and GI, 304 and 316 marine-grade stainless steel, 8.8 / 10.9 / 12.9 bolts, G70 and G80 lifting chain" },
+    { label: "Industries served", value: industries.map((i) => i.name).join(", ") },
+    { label: "Location", value: `${contactInfo.address}, ${contactInfo.city}` },
+    { label: "Phone", value: contactInfo.phone },
+  ]
+
   return (
     <>
+      <JsonLd data={aboutJsonLd} />
       <section className="bg-primary">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 md:px-8 md:py-24 lg:px-12">
           <p className="eyebrow !text-accent">About Sabta Trading</p>
@@ -96,6 +126,20 @@ export default async function AboutPage() {
             </ScrollReveal>
           </div>
         </div>
+
+        <section aria-labelledby="at-a-glance" className="mt-20 md:mt-28">
+          <h2 id="at-a-glance" className="text-2xl font-extrabold uppercase tracking-tight text-foreground md:text-3xl">
+            {siteConfig.shortName} at a glance
+          </h2>
+          <dl data-speakable className="mt-6 grid overflow-hidden rounded-2xl border border-border md:grid-cols-2">
+            {facts.map((f, i) => (
+              <div key={f.label} className={`flex flex-col gap-1 border-b border-border px-5 py-4 sm:flex-row sm:gap-4 ${i % 2 === 0 ? "bg-secondary/40" : ""}`}>
+                <dt className="w-40 shrink-0 text-xs font-bold uppercase tracking-wider text-foreground">{f.label}</dt>
+                <dd className="text-sm text-muted-foreground">{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
         <div className="mt-20 grid grid-cols-2 gap-5 md:mt-28 md:gap-8 lg:grid-cols-4">
           {stats.map((stat, i) => (
