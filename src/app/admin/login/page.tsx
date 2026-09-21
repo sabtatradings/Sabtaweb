@@ -1,5 +1,14 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 import { loginAction } from "@/app/admin/actions"
+import { getAdminUser } from "@/lib/auth"
+
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid: "Incorrect email or password. Please try again.",
+  denied: "This account doesn't have admin access.",
+  limited: "Too many attempts. Please wait a few minutes and try again.",
+  unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
+}
 
 export const metadata: Metadata = {
   title: "Admin Login",
@@ -13,6 +22,9 @@ export default async function AdminLoginPage({
 }) {
   const { error } = await searchParams
 
+  // Already signed in (e.g. opened /admin/login in a new tab): go straight in.
+  if (await getAdminUser()) redirect("/admin")
+
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-16 sm:px-6">
       <p className="eyebrow">Sabta Trading</p>
@@ -21,7 +33,7 @@ export default async function AdminLoginPage({
 
       {error && (
         <p className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-          Incorrect password. Please try again.
+          {Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, error) ? ERROR_MESSAGES[error] : ERROR_MESSAGES.invalid}
         </p>
       )}
 
@@ -36,6 +48,7 @@ export default async function AdminLoginPage({
             type="email"
             required
             autoFocus
+            autoComplete="username"
             className="mt-1.5 h-12 w-full rounded-lg border border-input bg-background px-4 text-sm outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/20"
             placeholder="admin@sabtadxb.com"
           />
@@ -49,6 +62,7 @@ export default async function AdminLoginPage({
             name="password"
             type="password"
             required
+            autoComplete="current-password"
             className="mt-1.5 h-12 w-full rounded-lg border border-input bg-background px-4 text-sm outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
         </div>

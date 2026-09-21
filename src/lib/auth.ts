@@ -1,145 +1,148 @@
-// Hand-rolled admin auth: a password check plus an HMAC-signed, httpOnly
-// session cookie. No auth library / database — kept intentionally simple so
-// it works with zero extra dependencies.
+// Admin auth, powered by Supabase Authentication (email + password).
 //
-// Configure via environment variables (see .env.local):
-//   ADMIN_PASSWORD        — the password required to log into /admin
-//   ADMIN_SESSION_SECRET  — OPTIONAL. If unset, the cookie-signing key is
-//                           derived from the other server-side env vars, so
-//                           nothing extra needs configuring.
-// Sessions are just a signed cookie: log in from any device, anywhere, with
-// the password — nothing is tied to an IP, device or server.
+// Create your admin user in the Supabase dashboard (Authentication → Users →
+// Add user), then either
+//   - list that email in the ADMIN_EMAIL env var (comma-separated for several), or
+//   - give the user `app_metadata.role = "admin"` (see README / SQL below).
+//
+//   update auth.users
+//     set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'
+//     where email = 'you@example.com';
+//
+// Sessions are the Supabase access + refresh tokens stored in httpOnly cookies
+// (see admin-session.ts). Nothing is tied to an IP, device or server, so you can
+// log in from anywhere, on any device. The access token is validated by
+// Supabase on every request, and refreshed automatically by proxy.ts.
 
-import crypto from "crypto"
+import { cache } from "react"
 import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
+import { createClient, type Session } from "@supabase/supabase-js"
+import {
+  ACCESS_COOKIE,
+  REFRESH_COOKIE,
+  cookieOptions,
+  isAllowedAdmin,
+  isSecureRequest,
+  supabaseAuthConfig,
+} from "./admin-session"
 
-const COOKIE_NAME = "sabta_admin_session"
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
+export type AdminUser = { id: string; email: string }
+export type SignInResult = "ok" | "invalid" | "denied" | "limited" | "unavailable"
 
-const FALLBACK_PASSWORD = "Sabta@Admin2026"
-
-function getAdminPassword() {
-  return process.env.ADMIN_PASSWORD || FALLBACK_PASSWORD
-}
-
-function getSecret() {
-  if (process.env.ADMIN_SESSION_SECRET) return process.env.ADMIN_SESSION_SECRET
-  // No dedicated secret configured: derive the signing key from server-only
-  // env values (never sent to the browser), so it is private and stable across
-  // restarts. Changing the admin password signs everyone out.
-  return crypto
-    .createHash("sha256")
-    .update(
-      [
-        "sabta-admin-session",
-        getAdminPassword(),
-        process.env.ADMIN_EMAIL || "",
-        process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-      ].join("\u0000"),
-    )
-    .digest("hex")
-}
-
-import { supabase, isSupabaseConfigured } from "./supabase"
-import { ADMIN_HOST, MAIN_HOST, normalizeHost } from "./hosts"
-
-function sign(value: string) {
-  return crypto.createHmac("sha256", getSecret()).update(value).digest("hex")
-}
-
-export async function verifyCredentials(email: string, password: string): Promise<boolean> {
-  const envEmail = process.env.ADMIN_EMAIL || "admin@sabtadxb.com"
-  const envPassword = getAdminPassword()
-
-  // Match against environment variables
-  if (
-    email.trim().toLowerCase() === envEmail.trim().toLowerCase() &&
-    password === envPassword
-  ) {
-    return true
-  }
-
-  // Also check if password matches environment password
-  if (password === envPassword) {
-    return true
-  }
-
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (!error && data?.user) {
-        return true
-      }
-    } catch (err) {
-      console.error("Supabase Auth exception:", err)
-    }
-  }
-
-  return false
-}
-
-export async function createSession() {
-  const expires = Date.now() + SESSION_TTL_MS
-  const payload = `admin:${expires}`
-  const value = `${Buffer.from(payload, "utf8").toString("base64url")}.${sign(payload)}`
-  const store = await cookies()
-  // "Secure" is switched on automatically whenever the request came in over
-  // HTTPS (or on the real .com/.org domains, which are always HTTPS). A Secure
-  // cookie is silently dropped over plain http://, so plain-HTTP localhost
-  // keeps working. ADMIN_COOKIE_SECURE=true still forces it on.
-  const h = await headers()
-  const proto = (h.get("x-forwarded-proto") || "").split(",")[0].trim().toLowerCase()
-  const host = normalizeHost(h.get("x-forwarded-host") || h.get("host") || "")
-  const secure =
-    process.env.ADMIN_COOKIE_SECURE === "true" ||
-    proto === "https" ||
-    host === ADMIN_HOST ||
-    host === MAIN_HOST
-  store.set(COOKIE_NAME, value, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    expires: new Date(expires),
+function statelessClient() {
+  const cfg = supabaseAuthConfig()
+  if (!cfg) return null
+  return createClient(cfg.url, cfg.anon, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
 }
 
-export async function destroySession() {
-  const store = await cookies()
-  store.delete(COOKIE_NAME)
-}
+// --- tiny in-process brute-force guard (Supabase also rate-limits sign-ins) --
+const ATTEMPT_WINDOW_MS = 5 * 60 * 1000
+const MAX_ATTEMPTS = 10
+const attempts = new Map<string, { count: number; reset: number }>()
 
-export async function isAuthenticated(): Promise<boolean> {
-  const store = await cookies()
-  const raw = store.get(COOKIE_NAME)?.value
-  if (!raw) return false
-  const [encoded, sig] = raw.split(".")
-  if (!encoded || !sig) return false
-
-  let payload: string
-  try {
-    payload = Buffer.from(encoded, "base64url").toString("utf8")
-  } catch {
+function tooManyAttempts(key: string) {
+  const now = Date.now()
+  const entry = attempts.get(key)
+  if (!entry || now > entry.reset) {
+    attempts.set(key, { count: 1, reset: now + ATTEMPT_WINDOW_MS })
+    if (attempts.size > 5000) {
+      for (const [k, v] of attempts) if (now > v.reset) attempts.delete(k)
+    }
     return false
   }
-  if (sign(payload) !== sig) return false
-
-  const [tag, expiresStr] = payload.split(":")
-  if (tag !== "admin") return false
-  const expires = Number(expiresStr)
-  if (!Number.isFinite(expires) || Date.now() > expires) return false
-
-  return true
+  entry.count += 1
+  return entry.count > MAX_ATTEMPTS
 }
 
-/** Call at the top of any protected server component; redirects to the
- * login page when there is no valid session. */
+async function setSessionCookies(session: Pick<Session, "access_token" | "refresh_token">) {
+  const store = await cookies()
+  const secure = isSecureRequest(await headers())
+  const opts = cookieOptions(secure)
+  store.set(ACCESS_COOKIE, session.access_token, opts)
+  store.set(REFRESH_COOKIE, session.refresh_token, opts)
+}
+
+export async function signInAdmin(email: string, password: string): Promise<SignInResult> {
+  const client = statelessClient()
+  if (!client) return "unavailable"
+
+  const h = await headers()
+  const ip = (h.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown"
+  if (tooManyAttempts(ip)) return "limited"
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  })
+
+  if (error || !data.session || !data.user) {
+    const status = error?.status ?? 0
+    if (status === 429) return "limited"
+    if (error?.name === "AuthRetryableFetchError" || status >= 500) return "unavailable"
+    return "invalid"
+  }
+
+  if (!isAllowedAdmin(data.user)) {
+    // Valid Supabase account, but not an admin: don't keep the session around.
+    await client.auth.signOut({ scope: "local" }).catch(() => {})
+    return "denied"
+  }
+
+  await setSessionCookies(data.session)
+  return "ok"
+}
+
+export async function signOutAdmin() {
+  const store = await cookies()
+  const access = store.get(ACCESS_COOKIE)?.value
+  const cfg = supabaseAuthConfig()
+  if (access && cfg) {
+    // Best effort: revoke this device's session at Supabase (other devices
+    // stay signed in).
+    try {
+      await fetch(`${cfg.url}/auth/v1/logout?scope=local`, {
+        method: "POST",
+        headers: { apikey: cfg.anon, Authorization: `Bearer ${access}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(4000),
+      })
+    } catch {
+      // ignore — cookies are cleared below regardless
+    }
+  }
+  store.delete(ACCESS_COOKIE)
+  store.delete(REFRESH_COOKIE)
+}
+
+/** The signed-in admin, or null. Supabase validates the token on every call,
+ * so a revoked or deleted user loses access immediately. */
+export const getAdminUser = cache(async (): Promise<AdminUser | null> => {
+  const store = await cookies()
+  const token = store.get(ACCESS_COOKIE)?.value
+  if (!token) return null
+  const client = statelessClient()
+  if (!client) return null
+  try {
+    const { data, error } = await client.auth.getUser(token)
+    if (error || !data.user) return null
+    if (!isAllowedAdmin(data.user)) return null
+    return { id: data.user.id, email: data.user.email || "" }
+  } catch {
+    return null
+  }
+})
+
+export async function isAuthenticated(): Promise<boolean> {
+  return (await getAdminUser()) !== null
+}
+
+/** Call at the top of any protected server component or action; redirects to
+ * the login page when there is no valid admin session. */
 export async function requireAdmin() {
-  const ok = await isAuthenticated()
-  if (!ok) redirect("/admin/login")
+  const user = await getAdminUser()
+  if (!user) redirect("/admin/login")
+  return user
 }
