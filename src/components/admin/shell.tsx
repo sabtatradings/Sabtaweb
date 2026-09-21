@@ -17,7 +17,6 @@ import {
   Type,
   X,
 } from "lucide-react"
-import { logoutAction } from "@/app/admin/actions"
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -82,7 +81,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <ExternalLink className="size-4" />
             View site
           </Link>
-          <form action={logoutAction}>
+          <form method="post" action="/admin/logout">
             <button
               type="submit"
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-primary-foreground/70 transition hover:bg-white/10 hover:text-primary-foreground"

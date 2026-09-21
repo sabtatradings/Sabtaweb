@@ -6,7 +6,7 @@ import sharp from "sharp"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "@/lib/revalidate"
 import { v2 as cloudinary } from "cloudinary"
-import { signInAdmin, signOutAdmin, requireAdmin } from "@/lib/auth"
+import { requireAdmin } from "@/lib/auth"
 import { createPost, updatePost, deletePost, type BlogPost, type BlogContentBlock } from "@/lib/blog"
 import {
   addProduct,
@@ -91,25 +91,6 @@ function revalidateProductPaths(categorySlug: string, slug?: string) {
   revalidatePath("/products")
   revalidatePath(`/categories/${categorySlug}`)
   if (slug) revalidatePath(`/products/${categorySlug}/${slug}`)
-}
-
-// -------------------------------------------------------------
-// Authentication Actions
-// -------------------------------------------------------------
-
-export async function loginAction(formData: FormData) {
-  const email = String(formData.get("email") || "")
-  const password = String(formData.get("password") || "")
-  const result = await signInAdmin(email, password)
-  if (result !== "ok") {
-    redirect(`/admin/login?error=${result}`)
-  }
-  redirect("/admin")
-}
-
-export async function logoutAction() {
-  await signOutAdmin()
-  redirect("/admin/login")
 }
 
 // -------------------------------------------------------------

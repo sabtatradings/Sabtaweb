@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import { loginAction } from "@/app/admin/actions"
 import { getAdminUser } from "@/lib/auth"
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -37,7 +36,7 @@ export default async function AdminLoginPage({
         </p>
       )}
 
-      <form action={loginAction} className="mt-6 flex flex-col gap-4">
+      <form method="post" action="/admin/login/submit" className="mt-6 flex flex-col gap-4">
         <div>
           <label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-foreground">
             Email Address
