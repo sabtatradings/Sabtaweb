@@ -13,8 +13,8 @@ const EMAILJS_ENDPOINT = "https://api.emailjs.com/api/v1.0/email/send"
 const config = {
   serviceId: process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "service_ricnmyc",
   publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "",
-  contactTemplateId: process.env.NEXT_PUBLIC_EMAILJS_CONTACT_TEMPLATE_ID || "template_2x8i87g",
-  autoReplyTemplateId: process.env.NEXT_PUBLIC_EMAILJS_AUTOREPLY_TEMPLATE_ID || "template_5jpyu1q",
+  contactTemplateId: process.env.NEXT_PUBLIC_EMAILJS_CONTACT_TEMPLATE_ID || "template_qf5cgco",
+  autoReplyTemplateId: process.env.NEXT_PUBLIC_EMAILJS_AUTOREPLY_TEMPLATE_ID || "template_90o5qds",
 }
 
 /** False until NEXT_PUBLIC_EMAILJS_PUBLIC_KEY is set; the form then falls back to mailto. */

@@ -47,8 +47,8 @@ export default async function ContactPage({
             <div>
               <h2 className="text-2xl font-extrabold uppercase tracking-tight text-foreground">Send an Enquiry</h2>
               <p className="mb-8 mt-3 max-w-prose text-sm leading-relaxed text-muted-foreground">
-                Fill in the details below. This opens your email app with the enquiry pre-filled and addressed to our sales
-                team.
+                Fill in the details below and our sales team will get back to you shortly. You will also receive a
+                confirmation by email.
               </p>
               <ContactForm initialCategory={category} initialProduct={product} />
             </div>
