@@ -109,10 +109,18 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-16 border-t border-primary-foreground/10 pt-8">
+        <div className="mt-16 flex flex-col items-center gap-2 border-t border-primary-foreground/10 pt-8 sm:flex-row sm:justify-between">
           <p className="text-center text-xs text-primary-foreground/50">
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
+          <a
+            href="https://farwingstechsolutions.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary-foreground/50 transition-colors hover:text-accent"
+          >
+            Made by Farwings
+          </a>
         </div>
       </div>
     </footer>
