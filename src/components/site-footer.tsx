@@ -109,7 +109,7 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col items-center gap-2 border-t border-primary-foreground/10 pt-8 sm:flex-row sm:justify-between">
+        <div className="mt-16 flex flex-col items-center gap-1.5 border-t border-primary-foreground/10 pt-8">
           <p className="text-center text-xs text-primary-foreground/50">
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
@@ -119,7 +119,7 @@ export function SiteFooter() {
             rel="noopener noreferrer"
             className="text-xs text-primary-foreground/50 transition-colors hover:text-accent"
           >
-            Made by Farwings
+            Developed by Farwings
           </a>
         </div>
       </div>
