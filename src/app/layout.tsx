@@ -26,6 +26,10 @@ const outfit = Outfit({
   weight: ["300", "400", "500", "600", "700", "800"],
 })
 
+// Paste the token from Search Console → URL prefix → "HTML tag" (only the content="..." value),
+// or set GOOGLE_SITE_VERIFICATION in the hosting env.
+const GOOGLE_SITE_VERIFICATION = process.env.GOOGLE_SITE_VERIFICATION || ""
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -55,6 +59,11 @@ export async function generateMetadata(): Promise<Metadata> {
     creator: siteConfig.name,
     publisher: siteConfig.name,
     category: "Industrial hardware and fasteners",
+    // Google Search Console ownership (URL-prefix property, HTML tag method).
+    // Renders <meta name="google-site-verification" content="..."> on every page.
+    ...(GOOGLE_SITE_VERIFICATION
+      ? { verification: { google: GOOGLE_SITE_VERIFICATION } }
+      : {}),
     robots: {
       index: true,
       follow: true,
