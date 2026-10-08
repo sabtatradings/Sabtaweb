@@ -28,7 +28,7 @@ const outfit = Outfit({
 
 // Paste the token from Search Console → URL prefix → "HTML tag" (only the content="..." value),
 // or set GOOGLE_SITE_VERIFICATION in the hosting env.
-const GOOGLE_SITE_VERIFICATION = process.env.GOOGLE_SITE_VERIFICATION || ""
+const GOOGLE_SITE_VERIFICATION = process.env.GOOGLE_SITE_VERIFICATION || "8OSwhvMZmwxrSAr2pw2FgR6Zz72rxWgnzoWw1E8wv7Y"
 
 export const viewport: Viewport = {
   width: "device-width",
