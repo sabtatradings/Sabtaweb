@@ -114,7 +114,7 @@ export function SiteFooter() {
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
           <a
-            href="https://farwingstechsolutions.vercel.app/"
+            href="https://farwingstech.com"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-primary-foreground/50 transition-colors hover:text-accent"
