@@ -80,7 +80,15 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
     { label: "Availability", value: "In stock, Dubai UAE, confirm quantity with sales" },
   ].filter(Boolean) as { label: string; value: string }[]
 
-  const related = category.items.filter((p) => p.id !== product.id).slice(0, 4)
+  // The next six products in the range, wrapping round. Every product therefore
+  // links onward to six others and receives links from six others, so no product
+  // page is left with only the category page pointing at it (the old "first four
+  // of the range" gave the same four pages every inbound link).
+  const idx = category.items.findIndex((p) => p.id === product.id)
+  const related =
+    idx === -1
+      ? category.items.slice(0, 6)
+      : Array.from({ length: Math.min(6, category.items.length - 1) }, (_, k) => category.items[(idx + 1 + k) % category.items.length])
 
   return (
     <>

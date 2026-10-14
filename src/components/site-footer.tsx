@@ -59,6 +59,11 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/all-pages" className="text-sm text-primary-foreground/70 transition-colors hover:text-accent">
+                  Site Index
+                </Link>
+              </li>
+              <li>
                 <a
                   href={catalogPdfPath}
                   download="Sabta-Trading-Product-Catalog-2026.pdf"
