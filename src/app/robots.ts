@@ -34,7 +34,9 @@ const AI_AND_SEARCH_BOTS = [
   "CCBot",
 ]
 
-const PRIVATE_PATHS = ["/admin", "/api/"]
+// "/contact?" keeps the per-product quote-form URLs (/contact?category=…&product=…)
+// out of the crawl: they are duplicates of /contact and waste crawl budget.
+const PRIVATE_PATHS = ["/admin", "/api/", "/contact?"]
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const siteConfig = await getSiteConfig()

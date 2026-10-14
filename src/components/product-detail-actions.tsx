@@ -71,6 +71,7 @@ export function ProductDetailActions({ product }: { product: ProductForActions }
 
       <Link
         href={`/contact?category=${encodeURIComponent(product.categoryName)}&product=${encodeURIComponent(product.name)}`}
+        rel="nofollow"
         className="text-center text-xs font-semibold text-muted-foreground underline-offset-2 transition-colors hover:text-accent hover:underline"
       >
         Or request a quote for just this item by email

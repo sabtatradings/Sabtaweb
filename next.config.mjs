@@ -32,6 +32,33 @@ const nextConfig = {
       allowedOrigins: ["sabtadxb.org", "www.sabtadxb.org"],
     },
   },
+  async redirects() {
+    // Old-site URLs that Google still has (Search Console "Not found (404)").
+    // Sent to the closest current page so their link equity isn't lost.
+    const moved = [
+      ["/about-us", "/about"],
+      ["/contact-us", "/contact"],
+      ["/clips-&-pins", "/categories/clips-pins"],
+      ["/clips-%26-pins", "/categories/clips-pins"],
+      ["/clamps-rubit-brand", "/categories/hose-clips-clamps"],
+      ["/hose-clips-rubit-brand-1", "/categories/hose-clips-clamps"],
+      ["/misc-hardware", "/categories/misc-hardware"],
+      ["/lifting-marine-hardware", "/categories/lifting-marine-hardware"],
+      ["/multi-band", "/products/banding-systems/multi-band"],
+      ["/&", "/"],
+    ];
+    return [
+      // One canonical host: the bare domain serves the same pages as www, which
+      // Search Console reports as "Alternative page with proper canonical tag".
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "sabtadxb.com" }],
+        destination: "https://www.sabtadxb.com/:path*",
+        permanent: true,
+      },
+      ...moved.map(([source, destination]) => ({ source, destination, permanent: true })),
+    ];
+  },
   async headers() {
     // The hero video/poster and the brand/team/catalog assets are served
     // straight out of /public — they bypass the next/image optimizer above
