@@ -5,13 +5,15 @@ import { CtaBanner } from "@/components/home/cta-banner"
 import { JsonLd } from "@/components/json-ld"
 import { getSiteConfig, getFaqs } from "@/lib/db"
 import { buildMetadata } from "@/lib/seo"
+import { staticPageSeo } from "@/lib/seo-content"
 import { faqEntities, graph, webPageNode } from "@/lib/structured-data"
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = await getSiteConfig()
   return buildMetadata(siteConfig, {
-    title: "FAQ: Stock, Grades, Sourcing & Quotes",
-    description: `Answers about ${siteConfig.name}: 304/316 stainless stock, sourcing items not on the shelf, delivery, collection and how to request a quote in Dubai.`,
+    title: staticPageSeo.faq.title,
+    absoluteTitle: true,
+    description: staticPageSeo.faq.description,
     path: "/faq",
   })
 }

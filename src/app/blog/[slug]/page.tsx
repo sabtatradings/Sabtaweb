@@ -13,6 +13,7 @@ import { getPost, getRelatedPosts, readAllPosts, type BlogContentBlock } from "@
 import { buildMetadata, snippet } from "@/lib/seo"
 import { rangesFor } from "@/lib/related"
 import { blogPostingNode, graph, webPageNode } from "@/lib/structured-data"
+import { categorySeo } from "@/lib/seo-content"
 
 export async function generateStaticParams() {
   return (await readAllPosts()).map((post) => ({ slug: post.slug }))
@@ -130,7 +131,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                     href={`/categories/${range.slug}`}
                     className="group inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold text-foreground transition-colors hover:border-accent hover:text-accent"
                   >
-                    {range.name}
+                    {categorySeo[range.slug]?.linkLabel ?? range.name}
                     <ArrowRight className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                   </Link>
                 </li>

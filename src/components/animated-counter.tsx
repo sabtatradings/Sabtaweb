@@ -41,10 +41,18 @@ export function AnimatedCounter({
     return () => observer.disconnect()
   }, [target, duration])
 
+  // The server-rendered HTML would otherwise read "0+" to crawlers and
+  // screen readers; they get the real figure, the animation stays visual-only.
   return (
     <span ref={ref}>
-      {value.toLocaleString()}
-      {suffix}
+      <span aria-hidden="true">
+        {value.toLocaleString()}
+        {suffix}
+      </span>
+      <span className="sr-only">
+        {target.toLocaleString("en-US")}
+        {suffix}
+      </span>
     </span>
   )
 }

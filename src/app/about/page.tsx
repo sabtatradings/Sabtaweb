@@ -11,15 +11,16 @@ import { Industries } from "@/components/home/industries"
 import { JsonLd } from "@/components/json-ld"
 import { getSiteConfig, getContactInfo, getCategories, getIndustries } from "@/lib/db"
 import { buildMetadata } from "@/lib/seo"
+import { staticPageSeo } from "@/lib/seo-content"
 import { graph, orgId, webPageNode } from "@/lib/structured-data"
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = await getSiteConfig()
   return buildMetadata(siteConfig, {
-    title: `About ${siteConfig.shortName}: Dubai Fastener Distributor Since ${siteConfig.founded}`,
-    description: `${siteConfig.name} was founded in Dubai in ${siteConfig.founded} by Saifuddin Ismail and stocks ${siteConfig.itemsInStock} fastener and marine rigging items.`,
-    path: "/about",
+    title: staticPageSeo.about.title,
     absoluteTitle: true,
+    description: staticPageSeo.about.description,
+    path: "/about",
   })
 }
 

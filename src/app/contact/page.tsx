@@ -6,13 +6,15 @@ import { ScrollReveal } from "@/components/scroll-reveal"
 import { JsonLd } from "@/components/json-ld"
 import { getSiteConfig, getContactInfo } from "@/lib/db"
 import { buildMetadata } from "@/lib/seo"
+import { staticPageSeo } from "@/lib/seo-content"
 import { graph, orgId, webPageNode } from "@/lib/structured-data"
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = await getSiteConfig()
   return buildMetadata(siteConfig, {
-    title: "Contact & Location, Baniyas Square Dubai",
-    description: `Contact ${siteConfig.name} at Baniyas Square, Dubai: call +971 4 2210506, WhatsApp or email our sales team for a fastener or marine rigging hardware quote.`,
+    title: staticPageSeo.contact.title,
+    absoluteTitle: true,
+    description: staticPageSeo.contact.description,
     path: "/contact",
   })
 }

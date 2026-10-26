@@ -13,6 +13,8 @@ import { buildMetadata, withCta } from "@/lib/seo"
 import { readAllPosts } from "@/lib/blog"
 import { guidesFor } from "@/lib/related"
 import { graph, itemListNode, webPageNode } from "@/lib/structured-data"
+import { categorySeo } from "@/lib/seo-content"
+import { RichText, SeoSections } from "@/components/seo-sections"
 
 export const revalidate = 30
 
@@ -31,9 +33,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!category) return {}
   const withItems = await getCategoryWithItems(slug)
   const image = category.image ?? withItems?.items.find((i) => i.image)?.image
+  const seo = categorySeo[slug]
   return buildMetadata(siteConfig, {
-    title: `${category.name} in Dubai, UAE`,
-    description: withCta(`${category.shortDescription} ${withItems?.items.length ?? 0} product types stocked by ${siteConfig.shortName} in Dubai, UAE.`, "Request a quote."),
+    title: seo?.title ?? `${category.name} in Dubai, UAE`,
+    absoluteTitle: Boolean(seo?.title),
+    description: seo?.description ?? withCta(`${category.shortDescription} ${withItems?.items.length ?? 0} product types stocked by ${siteConfig.shortName} in Dubai, UAE.`, "Request a quote."),
     path: `/categories/${category.slug}`,
     image: image ? { url: image, alt: `${category.name} stocked by ${siteConfig.shortName}, Dubai` } : undefined,
   })
@@ -51,11 +55,16 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   const others = categories.filter((c) => c.slug !== category.slug)
   const siteConfig = await getSiteConfig()
+  const seo = categorySeo[category.slug] ?? {}
+  const heading = seo.h1 ?? category.name
+  const intro = seo.intro ?? category.description
+  const productsLead = (seo.productsLead ?? "{count} product types, grades and standards as stocked. Confirm current availability with our sales team.")
+    .replace("{count}", String(category.items.length))
   const categoryJsonLd = graph([
     webPageNode(siteConfig, {
       path: `/categories/${category.slug}`,
-      name: `${category.name} in Dubai, UAE`,
-      description: category.description,
+      name: `${heading} in Dubai, UAE`,
+      description: intro,
       type: "CollectionPage",
       image: category.image ?? category.items.find((i) => i.image)?.image,
       speakable: ["h1", "[data-speakable]"],
@@ -78,10 +87,15 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           <div>
             {category.brandNote && <p className="eyebrow !text-accent">{category.brandNote}</p>}
             <h1 className="text-balance text-2xl font-extrabold uppercase tracking-tight text-primary-foreground sm:text-3xl md:text-5xl">
-              {category.name}
+              {heading}
             </h1>
           </div>
-          <p data-speakable className="mt-5 max-w-2xl text-pretty text-sm leading-relaxed text-primary-foreground/75 md:text-base">{category.description}</p>
+          <p data-speakable className="mt-5 max-w-2xl text-pretty text-sm leading-relaxed text-primary-foreground/75 md:text-base">{intro}</p>
+          {seo.introExtra && (
+            <p className="mt-3 max-w-2xl text-pretty text-sm leading-relaxed text-primary-foreground/75 md:text-base [&_a]:text-accent">
+              <RichText text={seo.introExtra} />
+            </p>
+          )}
         </div>
       </section>
 
@@ -95,7 +109,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           <div className="mt-10">
             <h2 className="text-xl font-extrabold uppercase tracking-tight text-foreground">Product Types In This Range</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {category.items.length} product types, grades and standards as stocked. Confirm current availability with our sales team.
+              <RichText text={productsLead} />
             </p>
           </div>
         </ScrollReveal>
@@ -108,6 +122,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           </div>
         </ScrollReveal>
 
+        <SeoSections sections={seo.sections} />
+
         <RelatedGuides posts={guidesFor(posts, { categorySlug: category.slug })} heading={`${category.name}: Buying Guides`} />
 
         <div className="mt-16 border-t border-border pt-12 md:mt-20">
@@ -115,7 +131,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {others.map((cat) => (
               <Link key={cat.slug} href={`/categories/${cat.slug}`} className="card-premium group flex items-center gap-3 p-4">
-                <span className="text-sm font-bold leading-tight text-foreground">{cat.name}</span>
+                <span className="text-sm font-bold leading-tight text-foreground">{categorySeo[cat.slug]?.linkLabel ?? cat.name}</span>
                 <ArrowRight className="ml-auto size-4 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
               </Link>
             ))}

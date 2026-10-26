@@ -17,6 +17,8 @@ import { buildMetadata, withCta } from "@/lib/seo"
 import { readAllPosts } from "@/lib/blog"
 import { guidesFor } from "@/lib/related"
 import { graph, productNode, webPageNode } from "@/lib/structured-data"
+import { productSeo } from "@/lib/seo-content"
+import { SeoSections } from "@/components/seo-sections"
 
 export const revalidate = 30
 
@@ -39,9 +41,11 @@ export async function generateMetadata({
   const spec = [product.grade, product.standard].filter(Boolean).join(", ")
   const cover = product.images?.[0] ?? product.image
   const withSpec = spec ? `${product.name} (${spec}) in Dubai` : `${product.name} in Dubai, UAE`
+  const seo = productSeo[`${categorySlug}/${product.slug}`]
   return buildMetadata(siteConfig, {
-    title: withSpec.length <= 60 ? withSpec : `${product.name} in Dubai, UAE`,
-    description: withCta(product.description, "Request a quote in Dubai."),
+    title: seo?.title ?? (withSpec.length <= 60 ? withSpec : `${product.name} in Dubai, UAE`),
+    ...(seo?.title ? { absoluteTitle: true } : {}),
+    description: seo?.description ?? withCta(product.description, "Request a quote in Dubai."),
     path: `/products/${categorySlug}/${product.slug}`,
     image: cover ? { url: cover, alt: product.name } : undefined,
   })
@@ -56,6 +60,7 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
   if (!product) notFound()
 
   const usageData = getProductUsageData(categorySlug, product.name)
+  const seo = productSeo[`${category.slug}/${product.slug}`] ?? {}
 
   const gallery = product.images && product.images.length > 0 ? product.images : product.image ? [product.image] : []
 
@@ -145,7 +150,7 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
               </Link>
 
               <h1 className="mt-4 text-balance text-2xl font-extrabold uppercase tracking-tight text-foreground sm:text-3xl md:text-4xl">
-                {product.name}
+                {seo.h1 ?? product.name}
               </h1>
 
               {(product.grade || product.standard) && (
@@ -232,6 +237,8 @@ export default async function ProductPage({ params }: { params: Promise<{ catego
             </div>
           </ScrollReveal>
         </div>
+
+        <SeoSections sections={seo.sections} />
 
         {related.length > 0 && (
           <div className="mt-16 border-t border-border pt-12 md:mt-20">
