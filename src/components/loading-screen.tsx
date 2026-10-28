@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState, useRef } from "react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 // Routes worth having ready before the visitor ever clicks — the ones
 // almost everyone lands on next from the homepage. Warming these here (in
@@ -13,6 +13,13 @@ import { useRouter } from "next/navigation"
 const PREFETCH_ROUTES = ["/products", "/about", "/contact"]
 
 export function LoadingScreen() {
+  // The boot animation only plays on the homepage. Visitors who land on a
+  // range, product or guide straight from search get the page immediately:
+  // on every other page the overlay held back first paint by ~1.9s (measured
+  // 2.7s vs 0.8s on a throttled mobile), which hurts Core Web Vitals and
+  // makes searchers bounce. Decided once, from the landing URL.
+  const pathname = usePathname()
+  const [enabled] = useState(() => pathname === "/")
   const [pct, setPct] = useState(0)
   const [exiting, setExiting] = useState(false)
   const [hidden, setHidden] = useState(false)
@@ -25,11 +32,20 @@ export function LoadingScreen() {
   // Runs before paint so a returning visitor (same tab session) never sees
   // the boot animation flash in.
   useLayoutEffect(() => {
-    if (sessionStorage.getItem("sabta-loaded")) {
+    let booted = false
+    try {
+      booted = Boolean(sessionStorage.getItem("sabta-loaded"))
+      // Landed off the homepage: mark the session as booted so the homepage
+      // hero doesn't wait for a loader that never ran.
+      if (!enabled && !booted) sessionStorage.setItem("sabta-loaded", "1")
+    } catch {
+      // Private-mode storage can throw; the hero has its own timeout fallback.
+    }
+    if (booted || !enabled) {
       setSkip(true)
       setHidden(true)
     }
-  }, [])
+  }, [enabled])
 
   // Fires on every page load — including the skipped/no-animation ones —
   // since this is about warming the router cache, not about the visual
@@ -42,7 +58,7 @@ export function LoadingScreen() {
   }, [router])
 
   useEffect(() => {
-    if (skip) return
+    if (skip || !enabled) return
 
     let isMounted = true
 
@@ -157,7 +173,9 @@ export function LoadingScreen() {
         videoEl.removeEventListener("loadeddata", handleLoad)
       }
     }
-  }, [skip])
+  }, [skip, enabled])
+
+  if (!enabled) return null
 
   return (
     <div id="sabta-loader" data-hidden={hidden} aria-hidden="true">

@@ -12,6 +12,7 @@ import { HomeFaq } from "@/components/home/home-faq"
 import { JsonLd } from "@/components/json-ld"
 import { getAllCategoriesWithItems, getFeaturedProducts, getSiteConfig, getTestimonials, getFaqs } from "@/lib/db"
 import { buildMetadata } from "@/lib/seo"
+import { homeTitle } from "@/lib/seo-content"
 import { faqNode, graph, itemListNode, webPageNode } from "@/lib/structured-data"
 
 export const revalidate = 30
@@ -19,7 +20,7 @@ export const revalidate = 30
 export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = await getSiteConfig()
   return buildMetadata(siteConfig, {
-    title: `Fastener & Marine Rigging Hardware in Dubai | ${siteConfig.shortName}`,
+    title: homeTitle,
     absoluteTitle: true,
     description: `Dubai fastener & marine rigging hardware distributor since ${siteConfig.founded}. ${siteConfig.itemsInStock} items in stock in 304/316 stainless, GI and 8.8–12.9 grades. Request a quote.`,
     path: "/",

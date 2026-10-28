@@ -48,6 +48,11 @@ export function graph(nodes: (object | null | undefined | false)[]) {
 // Site-wide entities (rendered once in the root layout)
 // ---------------------------------------------------------------------------
 
+// The one-word brand people type ("Sabta" from "Sabta Trading"), declared as an
+// alternate name so the bare brand search resolves to this business.
+const brandWord = (site: LdSite) => site.shortName?.split(/\s+/)[0]
+const uniq = (xs: (string | undefined)[]) => [...new Set(xs.filter((x): x is string => Boolean(x)))]
+
 export function organizationNode(site: LdSite, contact: LdContact, categories: CategoryMeta[]) {
   const poBox = contact.poBox?.match(/\d{3,}/)?.[0]
   return {
@@ -55,7 +60,7 @@ export function organizationNode(site: LdSite, contact: LdContact, categories: C
     "@id": orgId(site),
     name: site.name,
     legalName: site.name,
-    alternateName: [site.shortName, site.nameAr].filter(Boolean),
+    alternateName: uniq([site.shortName, brandWord(site), site.nameAr]),
     url: base(site),
     description: site.description,
     ...(site.tagline ? { slogan: site.tagline } : {}),
@@ -119,7 +124,7 @@ export function websiteNode(site: LdSite) {
     "@id": websiteId(site),
     url: base(site),
     name: site.name,
-    ...(site.shortName ? { alternateName: site.shortName } : {}),
+    ...(site.shortName ? { alternateName: uniq([site.shortName, brandWord(site)]) } : {}),
     description: site.description,
     inLanguage: "en",
     publisher: { "@id": orgId(site) },
